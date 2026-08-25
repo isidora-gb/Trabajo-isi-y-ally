@@ -16,7 +16,7 @@ pd.set_option("display.width", 200)
 # ==================================================
 
 carpeta_actual = Path(__file__).resolve().parent
-nombre_archivo = "CF-2023-I-204-1230_DAT.xlsx"
+nombre_archivo = "Dataset_eolico_filtrado.xlsx"
 
 # Buscarlo en la carpeta del programa o en una carpeta llamada dataset
 posibles_rutas = [
@@ -49,7 +49,7 @@ print(ruta_archivo)
 
 dataset_completo = pd.read_excel(
     ruta_archivo,
-    sheet_name="Hoja1"
+    sheet_name="Datos_limpios"
 )
 
 print("\n" + "=" * 70)
