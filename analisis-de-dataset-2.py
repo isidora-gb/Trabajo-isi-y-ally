@@ -1,10 +1,3 @@
-"""Genera resultado_analisis_2.xlsx con pandas y openpyxl.
-
-Guarda este archivo junto a Dataset_eolico_filtrado_2.xlsx y al Excel original.
-Abre el archivo .py en VS Code y pulsa el botón de ejecutar.
-Las estadísticas se calculan en Python; ejecuta de nuevo para actualizarlas.
-"""
-
 from pathlib import Path
 import argparse
 import math
@@ -12,8 +5,7 @@ import sys
 
 try:
     import pandas as pd
-    from openpyxl.styles import Alignment, Font, PatternFill
-    from openpyxl.formatting.rule import ColorScaleRule
+    from openpyxl.styles import Alignment, Font
     from openpyxl.utils import get_column_letter
 except ModuleNotFoundError as error:
     print(f"Falta la biblioteca: {error.name}")
@@ -76,13 +68,11 @@ def calcular_estadisticas(datos, factor_iqr=1.5):
 
 def dar_formato(hoja, tabla, fila_cabecera=1, filtro=True):
     """Formatea encabezados y columnas sin recorrer todas las celdas de datos."""
-    hoja.sheet_view.showGridLines = False
-    hoja.freeze_panes = f"B{fila_cabecera + 1}"
-    hoja.row_dimensions[fila_cabecera].height = 44
+    hoja.sheet_view.showGridLines = True
+    hoja.row_dimensions[fila_cabecera].height = 32
     for i, nombre in enumerate(tabla.columns, start=1):
         celda = hoja.cell(fila_cabecera, i)
-        celda.font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
-        celda.fill = PatternFill("solid", fgColor="29465B")
+        celda.font = Font(name="Calibri", size=11, bold=True, color="000000")
         celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         dimension = hoja.column_dimensions[get_column_letter(i)]
         dimension.width = 29 if i == 1 else 19
@@ -175,7 +165,6 @@ def crear_resultado(entrada, original, salida, factor_iqr=1.5):
         est = escritor.sheets["Estadisticas"]
         dar_formato(est, basicas, fila_cabecera=6, filtro=False)
         dar_formato(est, distribucion, fila_cabecera=21, filtro=False)
-        est.freeze_panes = "B7"
         # Los dos bloques comparten columnas: se formatea cada celda del resumen.
         for tabla, encabezado in [(basicas, 6), (distribucion, 21)]:
             for j, nombre in enumerate(tabla.columns, start=1):
@@ -186,8 +175,7 @@ def crear_resultado(entrada, original, salida, factor_iqr=1.5):
                                            "#,##0" if nombre in {"N", "Vacíos", "Valores distintos", "Atípicos IQR"}
                                            else "0.000000")
                     if nombre == "Desv. estándar muestral":
-                        celda.font = Font(bold=True, color="29465B")
-                        celda.fill = PatternFill("solid", fgColor="E9F1F7")
+                        celda.font = Font(name="Calibri", size=11, bold=True)
         textos = {
             1: "Estadísticas del dataset eólico",
             2: f"Datos: {entrada.name} | Original: {original.name}",
@@ -204,24 +192,18 @@ def crear_resultado(entrada, original, salida, factor_iqr=1.5):
             43: "Las cifras se calculan en Python. Si modificas los datos, ejecuta este archivo otra vez para actualizarlas.",
         }
         for fila, texto in textos.items():
-            est.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=11)
             celda = est.cell(fila, 1, texto)
-            celda.font = Font(name="Arial", size=14 if fila == 1 else 10,
-                              bold=fila in {1, 35}, color="29465B")
-            celda.alignment = Alignment(vertical="center", wrap_text=True)
-            est.row_dimensions[fila].height = 32 if fila in {1, 4} else 28
+            celda.font = Font(name="Calibri", size=12 if fila == 1 else 10,
+                              bold=fila in {1, 35}, color="000000")
+            celda.alignment = Alignment(vertical="center")
+            est.row_dimensions[fila].height = 22
         cor = escritor.sheets["Correlaciones"]
         dar_formato(cor, correlaciones.reset_index(names="Sensor"), filtro=False)
         for fila in cor.iter_rows(min_row=2, max_row=11, min_col=2, max_col=11):
             for celda in fila:
                 celda.number_format = "0.000"
                 celda.alignment = Alignment(horizontal="center")
-        cor.conditional_formatting.add("B2:K11", ColorScaleRule(
-            start_type="num", start_value=-1, start_color="A9C6DE",
-            mid_type="num", mid_value=0, mid_color="FFFFFF",
-            end_type="num", end_value=1, end_color="EABFA9"))
         escritor.sheets["Valores estimados"].column_dimensions["D"].width = 48
-        escritor.sheets["Datos principales"].freeze_panes = "A2"
         escritor.sheets["Datos principales"].column_dimensions["K"].number_format = "0.######"
 
     print("\nANÁLISIS COMPLETADO")

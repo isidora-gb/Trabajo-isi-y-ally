@@ -1,15 +1,3 @@
-"""Limpieza inicial del Excel eólico.
-
-Conserva las 11 columnas con título y todas las filas.
-Rellena vacíos de los sensores con el promedio de hasta dos valores
-originales cercanos, según la posición de sus filas en la misma columna.
-Las filas con valores en columnas adicionales quedan registradas para revisión.
-
-Coloca este archivo en la carpeta del Excel y ejecútalo en VS Code.
-Guarda el resultado como Dataset_eolico_filtrado_2.xlsx en esa misma carpeta.
-Instalación, en la terminal: python -m pip install pandas openpyxl
-"""
-
 from pathlib import Path
 import argparse
 import sys
