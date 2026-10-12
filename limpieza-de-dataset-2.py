@@ -6,10 +6,11 @@ try:
     import numpy as np
     import pandas as pd
     import openpyxl  # Lector y escritor de archivos Excel.
+    from openpyxl.utils import get_column_letter
 except ModuleNotFoundError:
     print("Falta una biblioteca. Pega este comando en la terminal de VS Code:")
     prefijo = "& " if sys.platform == "win32" else ""
-    print(f'{prefijo}"{sys.executable}" -m pip install pandas openpyxl')
+    print(f'{prefijo}"{sys.executable}" -m pip install pandas numpy openpyxl')
     print("Cuando termine la instalación, vuelve a ejecutar el archivo.")
     raise SystemExit(1)
 
@@ -20,6 +21,105 @@ COLUMNAS = [
     "MagneX_SisGenEol", "MagneY_SisGenEol", "MagneZ_SisGenEol",
     "Ter_SisGenEol", "smp",
 ]
+
+
+MODULO_CONTADOR = 65536
+
+
+def es_contador(valor):
+    return (
+        np.isfinite(valor) and valor == np.floor(valor)
+        and 0 <= valor < MODULO_CONTADOR
+    )
+
+
+def recuperar_estructura(original):
+    if list(original.columns[:11]) != COLUMNAS:
+        raise ValueError("Los primeros 11 encabezados no coinciden con el original esperado.")
+    extras = list(original.columns[11:])
+    if any(not str(c).startswith("Unnamed:") for c in extras):
+        raise ValueError("Hay columnas adicionales con nombre. Deben revisarse antes de continuar.")
+
+    numerico = original.replace(r"^\s*$", np.nan, regex=True).apply(
+        pd.to_numeric, errors="raise"
+    )
+    valores = numerico.to_numpy(dtype=float)
+    if np.isinf(valores).any():
+        raise ValueError("Hay valores infinitos en el archivo original.")
+    anchos = np.isfinite(valores).sum(axis=1)
+    datos = numerico.iloc[:, :11].copy()
+    cambios, celdas, fragmentos = [], [], []
+
+    for i in np.flatnonzero(anchos > 11):
+        ancho = int(anchos[i])
+        fila = valores[i]
+        if not (np.isfinite(fila[:ancho]).all() and np.isnan(fila[ancho:]).all()):
+            raise ValueError(f"La fila {i + 2} tiene huecos internos y requiere revisión manual.")
+        if not (12 <= ancho <= 21):
+            raise ValueError(f"La fila {i + 2} tiene una longitud no contemplada: {ancho}.")
+        if i == 0 or i + 1 == len(valores) or anchos[i - 1] != 11 or anchos[i + 1] != 11:
+            raise ValueError(f"La fila {i + 2} no tiene dos filas vecinas completas para validarla.")
+
+        inicio = ancho - 11
+        bloque = fila[inicio:ancho].copy()
+        anterior, contador, siguiente = valores[i - 1, 10], bloque[-1], valores[i + 1, 10]
+        if not all(es_contador(v) for v in (anterior, contador, siguiente)):
+            raise ValueError(f"No se puede validar el contador de la fila {i + 2}.")
+        paso_anterior = int((contador - anterior) % MODULO_CONTADOR)
+        paso_siguiente = int((siguiente - contador) % MODULO_CONTADOR)
+        if paso_anterior not in (1, 2) or paso_siguiente != 1:
+            raise ValueError(f"El bloque final de la fila {i + 2} no encaja con sus vecinos.")
+
+        datos.iloc[i, :] = bloque
+        cambios.append({
+            "fila_excel": int(i + 2), "celdas_presentes": ancho,
+            "columna_inicio_bloque": get_column_letter(inicio + 1),
+            "columna_fin_bloque": get_column_letter(ancho),
+            "smp_anterior": int(anterior), "smp_recuperado": int(contador),
+            "smp_siguiente": int(siguiente), "paso_anterior_modulo": paso_anterior,
+            "paso_siguiente_modulo": paso_siguiente, "valores_fragmento": inicio,
+        })
+        for j, variable in enumerate(COLUMNAS):
+            origen = inicio + j
+            celdas.append({
+                "fila_excel": int(i + 2),
+                "celda_origen": f"{get_column_letter(origen + 1)}{i + 2}",
+                "variable_destino": variable, "valor_original_recuperado": float(fila[origen]),
+            })
+        for j in range(inicio):
+            fragmentos.append({
+                "fila_excel": int(i + 2),
+                "celda_origen": f"{get_column_letter(j + 1)}{i + 2}",
+                "valor_original": float(fila[j]),
+                "motivo": "Fragmento previo al bloque completo; registro no reconstruible con certeza",
+            })
+
+    # Un valor perdido se conserva como perdido; aquí no se imputa.
+    presentes = datos["smp"].dropna().to_numpy(dtype=float)
+    if not all(es_contador(v) for v in presentes):
+        raise ValueError("Quedan contadores no enteros o fuera del rango observado.")
+
+    saltos, reinicios = [], []
+    contador = datos["smp"].to_numpy(dtype=float)
+    for i in range(1, len(contador)):
+        previo, actual = contador[i - 1], contador[i]
+        if not (np.isfinite(previo) and np.isfinite(actual)):
+            continue
+        if actual < previo:
+            if previo != MODULO_CONTADOR - 1 or actual != 0:
+                raise ValueError(f"Hay un descenso no explicado del contador en la fila {i + 2}.")
+            reinicios.append(int(i + 2))
+        paso = int((actual - previo) % MODULO_CONTADOR)
+        if paso not in (1, 2):
+            raise ValueError(f"Hay un salto no contemplado del contador en la fila {i + 2}: {paso}.")
+        if paso == 2:
+            saltos.append({
+                "fila_excel_anterior": int(i + 1), "fila_excel_actual": int(i + 2),
+                "smp_anterior": int(previo), "smp_actual": int(actual),
+                "posiciones_sin_registro_completo": paso - 1,
+            })
+
+    return datos, cambios, celdas, fragmentos, saltos, reinicios
 
 
 def rellenar_vecinos(serie, cantidad=2):
@@ -140,7 +240,7 @@ def main():
     if opciones.archivo:
         entrada = Path(opciones.archivo).resolve()
     else:
-        nombres = ["CF-2023-I-204-1230_DAT.xlsx", "CF-2023-I-204-1230_DAT(1).xlsx"]
+        nombres = ["CF-2023-I-204-1230_DAT.xlsx", "CF-2023-I-204-1230_DAT(1).xlsx", "CF-2023-I-204-1230_DAT(2).xlsx"]
         entrada = next((carpeta / n for n in nombres if (carpeta / n).is_file()), None)
         if entrada is None:
             raise FileNotFoundError(
@@ -159,12 +259,20 @@ def main():
     original = pd.read_excel(
         entrada, sheet_name=0, engine="openpyxl", na_values=["NULL", "null", "None", " "]
     )
-    datos, registro, revisar, adicionales = limpiar(original, opciones.vecinos)
+    realineados, correcciones, celdas, fragmentos, saltos, reinicios = recuperar_estructura(original)
+    datos, registro, _, _ = limpiar(realineados, opciones.vecinos)
+    adicionales = list(original.columns[11:])
+    revisar = original.loc[original[adicionales].notna().any(axis=1)].copy() if adicionales else original.iloc[:0].copy()
+    revisar.insert(0, "fila_excel_original", revisar.index + 2)
     print("Guardando la nueva copia...", flush=True)
     salida.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(salida, engine="openpyxl") as escritor:
         datos.to_excel(escritor, sheet_name="Datos", index=False)
         registro.to_excel(escritor, sheet_name="Valores_estimados", index=False)
+        pd.DataFrame(correcciones).to_excel(escritor, sheet_name="Filas_realineadas", index=False)
+        pd.DataFrame(celdas).to_excel(escritor, sheet_name="Origen_valores", index=False)
+        pd.DataFrame(fragmentos).to_excel(escritor, sheet_name="Fragmentos_conservados", index=False)
+        pd.DataFrame(saltos).to_excel(escritor, sheet_name="Saltos_contador", index=False)
         revisar.to_excel(escritor, sheet_name="Filas_para_revisar", index=False)
         for hoja in escritor.book.worksheets:
             hoja.freeze_panes = "A2"
@@ -176,7 +284,8 @@ def main():
     print(f"Vacíos completados: {len(registro)}")
     print(f"Vacíos restantes: {int(datos.isna().sum().sum())}")
     print(f"Filas con valores en columnas extra, para revisar: {len(revisar)}")
-    print("Esas filas siguen en Datos. Revisa sus valores desplazados antes del PCA.")
+    print(f"Filas realineadas y validadas con el contador: {len(correcciones)}")
+    print("Los fragmentos restantes se conservaron en una hoja aparte.")
     print(f"Archivo guardado en: {salida}")
     print("\nÚltimas filas:")
     print(datos.tail(3).to_string(index=False))
