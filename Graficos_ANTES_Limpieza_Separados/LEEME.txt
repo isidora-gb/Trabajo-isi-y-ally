@@ -1,0 +1,5 @@
+Gráficos separados - ANTES de la limpieza
+
+Se generaron 30 gráficos: 10 histogramas, 10 diagramas de caja y 10 gráficos de comportamiento por muestra.
+Todos usan el Excel original sin corregir. No se trataron nulos, atípicos ni desalineaciones.
+El diseño usa fondo blanco y paleta rosada solo en los elementos del gráfico.
