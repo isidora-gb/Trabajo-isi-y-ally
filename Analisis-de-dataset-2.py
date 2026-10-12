@@ -41,8 +41,10 @@ def calcular_estadisticas(datos, factor_iqr=1.5):
             poblacional = 0.0
             if n >= 2:
                 desviacion = varianza = 0.0
-        atipicos = int(((serie < q1 - factor_iqr * iqr) |
-                        (serie > q3 + factor_iqr * iqr)).sum())
+        limite_inferior = q1 - factor_iqr * iqr
+        limite_superior = q3 + factor_iqr * iqr
+        atipicos = int(((serie < limite_inferior) |
+                        (serie > limite_superior)).sum())
         registros.append({
             "Variable": columna, "N": n,
             "Promedio": serie.mean() if n else float("nan"),
@@ -57,6 +59,8 @@ def calcular_estadisticas(datos, factor_iqr=1.5):
             "Vacíos (%)": float(datos[columna].isna().mean()),
             "Valores distintos": distintos,
             "Desv. estándar poblacional": poblacional, "IQR": iqr,
+            "Límite inferior IQR": limite_inferior,
+            "Límite superior IQR": limite_superior,
             "Asimetría": serie.skew() if n >= 3 and poblacional > 0 else float("nan"),
             "Curtosis (exceso)": serie.kurt() if n >= 4 and poblacional > 0 else float("nan"),
             "Atípicos IQR": atipicos,
@@ -186,7 +190,7 @@ def crear_resultado(entrada, original, salida, factor_iqr=1.5):
             37: "Desviación estándar muestral: dispersión respecto del promedio, con divisor N−1. Poblacional: divisor N.",
             38: "Varianza muestral: cuadrado de la desviación estándar muestral. Rango: máximo menos mínimo.",
             39: f"Q1 y Q3: percentiles 25 y 75. IQR: Q3−Q1. Atípicos: fuera de [Q1−{factor_iqr}×IQR, Q3+{factor_iqr}×IQR].",
-            40: "Los atípicos se cuentan y se conservan. Asimetría: dirección de la cola. Curtosis: exceso respecto de la normal.",
+            40: "Los límites IQR son estadísticos, no límites físicos del sensor. Los atípicos se cuentan y se conservan. Asimetría: dirección de la cola. Curtosis: exceso respecto de la normal.",
             41: "smp es el contador de muestras; se excluye de la correlación entre los diez sensores.",
             42: "Resumen de nulos, Filas con nulos y Datos adicionales describen el original; Nulos principales describe el limpio.",
             43: "Las cifras se calculan en Python. Si modificas los datos, ejecuta este archivo otra vez para actualizarlas.",
