@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Tarea 2: gráficos agrupados, cuatro subgráficos como máximo por imagen.
-Etapa: después de la limpieza inicial.
-
-Ejecutar en VS Code: python Grafico_DESPUES_Agrupados_Corregido.py
-El código busca el Excel correspondiente en su misma carpeta y nunca lo modifica.
-Requisitos: pandas, numpy, openpyxl, matplotlib.
-"""
 from pathlib import Path
 import sys
 import numpy as np

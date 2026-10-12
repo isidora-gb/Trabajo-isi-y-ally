@@ -1,22 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-TAREA 2 - Tablas comparativas SIMPLES ANTES / DESPUÉS de la limpieza inicial.
-
-Requisitos (terminal de VS Code):
-    python -m pip install pandas numpy openpyxl
-
-Uso (con un Excel original y uno filtrado en la misma carpeta):
-    python Tablas_comparativas_Tarea2_SIMPLES.py
-
-Uso cuando hay varias copias de los archivos:
-    python Tablas_comparativas_Tarea2_SIMPLES.py --original "CF-2023-I-204-1230_DAT(3).xlsx" --limpio "Dataset_eolico_filtrado_2(3).xlsx"
-
-Este programa NO modifica ninguno de los dos Excel de entrada.
-Solo crea un Excel NUEVO con seis hojas y estadísticos de los 10 sensores.
-El contador smp solo se evalúa para nulos y control de registros; NO se
-considera una señal física y se excluye del análisis de atípicos.
-"""
-
 from pathlib import Path
 import argparse
 import sys
