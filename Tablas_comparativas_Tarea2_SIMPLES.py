@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-TAREA 2 - Tablas comparativas ANTES / DESPUÉS de la limpieza inicial.
+TAREA 2 - Tablas comparativas SIMPLES ANTES / DESPUÉS de la limpieza inicial.
 
 Requisitos (terminal de VS Code):
     python -m pip install pandas numpy openpyxl
 
 Uso (con un Excel original y uno filtrado en la misma carpeta):
-    python Tablas_comparativas_Tarea2.py
+    python Tablas_comparativas_Tarea2_SIMPLES.py
 
 Uso cuando hay varias copias de los archivos:
-    python Tablas_comparativas_Tarea2.py --original "CF-2023-I-204-1230_DAT(3).xlsx" --limpio "Dataset_eolico_filtrado_2(3).xlsx"
+    python Tablas_comparativas_Tarea2_SIMPLES.py --original "CF-2023-I-204-1230_DAT(3).xlsx" --limpio "Dataset_eolico_filtrado_2(3).xlsx"
 
 Este programa NO modifica ninguno de los dos Excel de entrada.
 Solo crea un Excel NUEVO con seis hojas y estadísticos de los 10 sensores.
@@ -24,7 +24,7 @@ import sys
 try:
     import numpy as np
     import pandas as pd
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
 except ModuleNotFoundError as error:
     print(f"Falta instalar: {error.name}")
@@ -184,41 +184,62 @@ def preparar_tablas(bruto, original, limpio_full, limpio):
 
 
 def escribir_excel(tablas, ruta_salida):
-    # Estética sencilla y legible, manteniendo unidades y porcentajes visibles.
+    """Crea hojas simples: sin filtros, sin paneles fijos y sin tablas dinámicas."""
     with pd.ExcelWriter(ruta_salida, engine="openpyxl") as escritor:
         for nombre, tabla in tablas.items():
             tabla.to_excel(escritor, sheet_name=nombre, index=False)
             hoja = escritor.sheets[nombre]
-            hoja.sheet_view.showGridLines = False
-            hoja.freeze_panes = "B2" if nombre not in {"Metodologia", "Control limpieza"} else "A2"
-            hoja.row_dimensions[1].height = 32
-            for celda in hoja[1]:
-                celda.font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-                celda.fill = PatternFill("solid", fgColor="93466D")
-                celda.alignment = Alignment(vertical="center", horizontal="center", wrap_text=True)
 
-            for col in hoja.columns:
-                cabecera = str(col[0].value)
-                ancho = 44 if nombre == "Metodologia" and cabecera == "Criterio / explicación" else (42 if cabecera == "Interpretación" else 25 if cabecera in {"Variable", "Indicador", "Concepto"} else 21)
-                hoja.column_dimensions[get_column_letter(col[0].column)].width = ancho
-                for celda in col[1:]:
-                    celda.font = Font(name="Calibri", size=10, color="303030")
-                    if celda.row % 2 == 0:
-                        celda.fill = PatternFill("solid", fgColor="FFF5F9")
-                    celda.alignment = Alignment(vertical="center", wrap_text=nombre in {"Metodologia", "Control limpieza"})
+            # TABLAS NORMALES: no se añaden filtros ni tablas de Excel.
+            hoja.auto_filter.ref = None
+            hoja.freeze_panes = None
+            hoja.sheet_view.showGridLines = True
+            hoja.row_dimensions[1].height = 28
+
+            borde = Border(bottom=Side(style="thin", color="D9D9D9"))
+            for celda in hoja[1]:
+                celda.font = Font(name="Calibri", size=11, bold=True, color="262626")
+                celda.fill = PatternFill(fill_type="solid", fgColor="E6E6E6")
+                celda.alignment = Alignment(vertical="center", horizontal="center", wrap_text=True)
+                celda.border = borde
+
+            for columna in hoja.columns:
+                titulo = str(columna[0].value)
+                if titulo == "Criterio / explicación":
+                    ancho = 72
+                elif titulo == "Interpretación":
+                    ancho = 52
+                elif titulo in {"Variable", "Indicador", "Concepto"}:
+                    ancho = 40
+                elif titulo in {"Sensor", "Etapa"}:
+                    ancho = 20
+                else:
+                    ancho = 23
+
+                letra = get_column_letter(columna[0].column)
+                hoja.column_dimensions[letra].width = ancho
+                for celda in columna[1:]:
+                    celda.font = Font(name="Calibri", size=10, color="262626")
+                    celda.alignment = Alignment(
+                        vertical="center",
+                        wrap_text=nombre in {"Metodologia", "Control limpieza"},
+                    )
+                    # Valores ya calculados por Python; se preservan los decimales.
                     if isinstance(celda.value, (int, float, np.number)):
-                        if any(s in cabecera for s in ["(%)", "Reducción DS"]):
+                        if "(%)" in titulo or titulo == "Reducción DS (%)":
                             celda.number_format = '0.00"%"'
-                        elif cabecera in {"N", "Nulos antes", "Nulos después", "Atípicos antes", "Atípicos después", "Atípicos IQR", "Antes", "Después"}:
+                        elif titulo in {"N", "Nulos antes", "Nulos después",
+                                        "Atípicos antes", "Atípicos después",
+                                        "Atípicos IQR", "Antes", "Después"}:
                             celda.number_format = "#,##0"
                         else:
                             celda.number_format = "0.000000"
+
             if nombre in {"Metodologia", "Control limpieza"}:
-                for i in range(2, hoja.max_row + 1):
-                    hoja.row_dimensions[i].height = 32
-            if nombre != "Metodologia":
-                hoja.auto_filter.ref = hoja.dimensions
-    print(f"Excel generado: {ruta_salida}")
+                for fila in range(2, hoja.max_row + 1):
+                    hoja.row_dimensions[fila].height = 32
+
+    print(f"Excel simple generado: {ruta_salida}")
 
 
 def main():
@@ -231,7 +252,7 @@ def main():
 
     original = localizar_archivo(carpeta, "CF-2023-I-204-1230_DAT*.xlsx", args.original, "original")
     limpio = localizar_archivo(carpeta, "Dataset_eolico_filtrado_2*.xlsx", args.limpio, "limpio")
-    salida = (Path(args.salida).expanduser() if args.salida else carpeta / "Tablas_comparativas_Tarea2_eolica.xlsx")
+    salida = (Path(args.salida).expanduser() if args.salida else carpeta / "Tablas_comparativas_Tarea2_SIMPLES.xlsx")
     if not salida.is_absolute():
         salida = carpeta / salida
     salida = salida.resolve()
