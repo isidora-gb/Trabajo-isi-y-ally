@@ -1,4 +1,0 @@
-Etapa: después de la limpieza inicial
-9 figuras (3 tipos x 3 familias).
-Los gráficos no modifican ni eliminan registros.
-Base realineada, nulos tratados; atípicos todavía conservados.

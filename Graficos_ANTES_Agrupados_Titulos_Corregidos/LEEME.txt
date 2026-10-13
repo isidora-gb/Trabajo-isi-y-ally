@@ -1,4 +1,0 @@
-Etapa: antes de la limpieza
-9 figuras (3 tipos x 3 familias).
-Los gráficos no modifican ni eliminan registros.
-Datos originales; algunas filas pueden estar desalineadas.
