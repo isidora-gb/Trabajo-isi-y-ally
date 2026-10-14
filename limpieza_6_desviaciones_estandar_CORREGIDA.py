@@ -10,7 +10,7 @@ Salidas:
     Resultados_6sigma.xlsx                -> estadisticas y auditoria
 
 Regla: borrar toda la fila si cualquiera de las variables fisicas evaluadas
-esta ESTRICTAMENTE por debajo de media - 6*DS o por encima de media + 6*DS.
+alcanza o supera 6 desviaciones estandar en valor absoluto (|z| >= 6).
 El contador 'smp' se conserva y se describe, pero no se evalua como magnitud
 fisica. No se utiliza RIC/IQR ni se realizan eliminaciones iterativas.
 """
@@ -78,9 +78,10 @@ desviaciones = datos.std(axis=0, ddof=1)  # Desviacion estandar MUESTRAL.
 limite_inferior = medias - NUM_DESVIACIONES * desviaciones
 limite_superior = medias + NUM_DESVIACIONES * desviaciones
 
-# Para cada columna numerica: verificar si cada dato sobrepasa ±6 DS.
-# COMPARACION ESTRICTA: si esta exactamente en el limite NO se elimina.
-fuera_de_limites = datos.lt(limite_inferior) | datos.gt(limite_superior)
+# Puntaje z por variable y criterio INCLUSIVO: |z| >= 6.
+# Las columnas de desviacion estandar 0 reciben z=0 y no generan eliminaciones.
+z_scores = (datos - medias).div(desviaciones.replace(0, np.nan)).fillna(0.0)
+fuera_de_limites = z_scores.abs().ge(NUM_DESVIACIONES)
 # Si una columna tiene desviacion estandar 0, todos sus valores son iguales;
 # no puede generar observaciones fuera de ±6 DS.
 
@@ -88,12 +89,10 @@ fuera_de_limites = datos.lt(limite_inferior) | datos.gt(limite_superior)
 # 'smp' tiene estadistica, pero no decide si se elimina una fila.
 filas_a_eliminar = fuera_de_limites[columnas_fisicas].any(axis=1)
 
-z_scores = (datos - medias).div(desviaciones.replace(0, np.nan)).fillna(0.0)
-
 # ---------------- 4. RESPALDO Y ELIMINACION DE FILAS COMPLETAS ----------------
 datos_eliminados = datos.loc[filas_a_eliminar].copy()
-datos_eliminados.insert(0, "Fila_Excel_original", datos_eliminados.index + 2)
-datos_eliminados["Variables_que_superan_6DS"] = [
+datos_eliminados.insert(0, "Fila_Excel_archivo_filtrado", datos_eliminados.index + 2)
+datos_eliminados["Variables_que_alcanzan_6DS"] = [
     ", ".join(fuera_de_limites.columns[fuera_de_limites.loc[i] &
                                      fuera_de_limites.columns.isin(columnas_fisicas)])
     for i in datos.index[filas_a_eliminar]
@@ -111,11 +110,11 @@ for i in datos.index[filas_a_eliminar]:
             media = float(medias[variable])
             ds = float(desviaciones[variable])
             z = float(z_scores.at[i, variable])
-            assert ds > 0 and abs(z) > NUM_DESVIACIONES, (
+            assert ds > 0 and abs(z) >= NUM_DESVIACIONES, (
                 f"ERROR de verificacion en fila {i + 2}, variable {variable}."
             )
             detalles.append({
-                "Fila_Excel_original": int(i + 2),
+                "Fila_Excel_archivo_filtrado": int(i + 2),
                 "Variable": variable,
                 "Valor_observado": valor,
                 "Media": media,
@@ -124,7 +123,7 @@ for i in datos.index[filas_a_eliminar]:
                 "Limite_superior": float(limite_superior[variable]),
                 "Z_con_signo": z,
                 "Z_absoluto": abs(z),
-                "Verificacion": "FUERA DE ±6 DS",
+                "Verificacion": "|z| >= 6",
             })
 
 datos_limpios = datos.loc[~filas_a_eliminar].reset_index(drop=True)
@@ -161,7 +160,7 @@ resumen = pd.DataFrame({
         "Porcentaje eliminado", "Iteraciones de la regla", "Columnas excluidas de la eliminacion",
     ],
     "Resultado": [
-        archivo_entrada.name, "|z| > 6: borrar la fila completa",
+        archivo_entrada.name, "|z| >= 6: borrar la fila completa",
         "Desviacion estandar muestral (ddof=1)", "NO",
         len(datos), len(datos_eliminados), len(datos_limpios),
         100 * len(datos_eliminados) / len(datos),
