@@ -10,7 +10,7 @@ Entrada por defecto:
 Salida:
     Resultados_6Sigma/CSV/*.csv (incluye datos_tratados_6sigma.csv)
     Resultados_6Sigma/Excel/Resultados_6Sigma.xlsx (tablas simples)
-    Resultados_6Sigma/Graficos_Paper/ (31 PNG, sin zoom)
+    Resultados_6Sigma/Graficos_Paper/ (33 PNG, sin zoom; incluye correlaciones)
     Resultados_6Sigma/RESUMEN_TERMINAL.txt
 
 Regla: |x - media| / DS_muestral >= 6. Estadisticos calculados UNA sola
@@ -395,6 +395,82 @@ def graficar_conteos(marcas, carpeta):
     guardar_png(fig,carpeta/"Conteo_atipicos_6sigma.png")
 
 
+
+
+def matriz_correlaciones(datos: np.ndarray) -> np.ndarray:
+    """Coeficientes r de Pearson de los 10 sensores; smp no participa."""
+    return np.corrcoef(datos[:, :len(SENSORES)], rowvar=False)
+
+
+def filas_matriz_correlacion(matriz: np.ndarray) -> list[dict]:
+    return [
+        {"Variable": fila, **{col: float(matriz[i, j]) if np.isfinite(matriz[i, j]) else None
+                               for j, col in enumerate(SENSORES)}}
+        for i, fila in enumerate(SENSORES)
+    ]
+
+
+def filas_cambios_correlacion(antes: np.ndarray, despues: np.ndarray) -> list[dict]:
+    # Eliminar diagonal y duplicados: 45 parejas únicas entre 10 sensores.
+    return [
+        {"Variable_1": SENSORES[i], "Variable_2": SENSORES[j],
+         "Pearson_antes": float(antes[i, j]),
+         "Pearson_despues": float(despues[i, j]),
+         "Cambio_r": float(despues[i, j] - antes[i, j])}
+        for i in range(len(SENSORES)) for j in range(i + 1, len(SENSORES))
+    ]
+
+
+def _decorar_matriz(ax, matriz: np.ndarray, titulo: str):
+    imagen = ax.imshow(matriz, cmap="RdBu_r", vmin=-1, vmax=1,
+                       interpolation="nearest", aspect="equal")
+    etiquetas = [nombre_corto(s) for s in SENSORES]
+    ax.set_xticks(np.arange(len(SENSORES)), etiquetas,
+                  rotation=45, ha="right", rotation_mode="anchor", fontsize=8)
+    ax.set_yticks(np.arange(len(SENSORES)), etiquetas, fontsize=8)
+    ax.tick_params(length=0, colors="#414750")
+    for borde in ax.spines.values():
+        borde.set_visible(False)
+    for i in range(len(SENSORES)):
+        for j in range(len(SENSORES)):
+            valor = matriz[i, j]
+            if np.isfinite(valor):
+                ax.text(j, i, f"{valor:.2f}", ha="center", va="center",
+                        fontsize=7.1, color=("white" if abs(valor) >= 0.65 else "#26313A"))
+    ax.set_title(titulo, fontsize=11, fontweight="semibold", pad=12, color="#25303A")
+    return imagen
+
+
+def graficar_correlaciones_despues(matriz: np.ndarray, n: int, destino: Path):
+    """Mapa de calor posterior a 6σ, con escala Pearson completa [-1,1]."""
+    fig, ax = plt.subplots(figsize=(8.2, 7.2), facecolor="white")
+    fig.subplots_adjust(left=.22, right=.84, bottom=.20, top=.85)
+    imagen = _decorar_matriz(ax, matriz, "Correlación de Pearson · después de 6σ")
+    cbar = fig.colorbar(imagen, ax=ax, fraction=.05, pad=.035, shrink=.87)
+    cbar.set_label("Coeficiente de correlación (r)", fontsize=9)
+    cbar.ax.tick_params(labelsize=8)
+    fig.text(.22, .91, f"n = {n:,} muestras · 10 sensores · smp excluido", fontsize=9, color="#64707A")
+    fig.text(.22, .035, "Se muestran todas las variables. Escala fija de r = −1 a +1; sin zoom.",
+             fontsize=8.4, color="#64707A")
+    guardar_png(fig, destino)
+
+
+def graficar_correlaciones_comparadas(antes: np.ndarray, despues: np.ndarray,
+                                      n_antes: int, n_despues: int, destino: Path):
+    """Comparación directa: exactamente la misma escala de color para ambos mapas."""
+    fig, axs = plt.subplots(1, 2, figsize=(13.4, 6.5), facecolor="white")
+    fig.subplots_adjust(left=.12, right=.90, bottom=.23, top=.82, wspace=.34)
+    imagen = _decorar_matriz(axs[0], antes, f"Antes de 6σ  (n = {n_antes:,})")
+    _decorar_matriz(axs[1], despues, f"Después de 6σ  (n = {n_despues:,})")
+    fig.suptitle("Correlación de Pearson · antes y después de 6σ",
+                 x=.12, ha="left", fontsize=13, fontweight="bold", color="#25303A", y=.96)
+    cbar = fig.colorbar(imagen, ax=axs, fraction=.022, pad=.04, shrink=.8)
+    cbar.set_label("Coeficiente r", fontsize=9)
+    cbar.ax.tick_params(labelsize=8)
+    fig.text(.12, .055, "Escala de color idéntica (−1 a +1); los cambios pequeños son esperables al retirar pocas filas.",
+             fontsize=8.5, color="#64707A")
+    guardar_png(fig, destino)
+
 def generar_graficos(original, tratado, retenidas, marcas, carpeta):
     estilo_paper()
     rutas=[]
@@ -409,6 +485,14 @@ def generar_graficos(original, tratado, retenidas, marcas, carpeta):
     carpeta_general.mkdir(parents=True,exist_ok=True)
     graficar_conteos(marcas,carpeta_general)
     rutas.append(carpeta_general/"Conteo_atipicos_6sigma.png")
+    corr_antes = matriz_correlaciones(original)
+    corr_despues = matriz_correlaciones(tratado)
+    ruta_actual = carpeta_general / "Correlacion_Despues_6Sigma.png"
+    ruta_comparacion = carpeta_general / "Correlaciones_Antes_Despues_6Sigma.png"
+    graficar_correlaciones_despues(corr_despues, len(tratado), ruta_actual)
+    graficar_correlaciones_comparadas(corr_antes, corr_despues, len(original), len(tratado), ruta_comparacion)
+    rutas.extend([ruta_actual, ruta_comparacion])
+    print("  ✓ Correlaciones después y antes/después | 2 gráficos adicionales", flush=True)
     return rutas
 
 
@@ -486,6 +570,18 @@ def main():
         ("resumen_6sigma.csv",resumen),
     ]:
         escribir_csv_tabla(csv_dir/nombre,tabla,list(tabla[0].keys()))
+    # Correlación posterior al tratamiento y comparación con la entrada limpia.
+    corr_antes = matriz_correlaciones(original)
+    corr_despues = matriz_correlaciones(tratado)
+    tabla_corr_antes = filas_matriz_correlacion(corr_antes)
+    tabla_corr_despues = filas_matriz_correlacion(corr_despues)
+    tabla_cambios_corr = filas_cambios_correlacion(corr_antes, corr_despues)
+    for nombre, tabla in [
+        ("correlacion_antes_6sigma.csv", tabla_corr_antes),
+        ("correlacion_despues_6sigma.csv", tabla_corr_despues),
+        ("cambios_correlacion_6sigma.csv", tabla_cambios_corr),
+    ]:
+        escribir_csv_tabla(csv_dir / nombre, tabla, list(tabla[0].keys()))
     excel=excel_dir/"Resultados_6Sigma.xlsx"
     generar_excel(excel,{
         "Resumen":resumen,
@@ -495,6 +591,9 @@ def main():
         "Comparacion":comparacion,
         "Filas_detectadas":retiradas,
         "Detalle_atipicos":detalles,
+        "Correlacion_antes":tabla_corr_antes,
+        "Correlacion_despues":tabla_corr_despues,
+        "Cambio_correlacion":tabla_cambios_corr,
     })
     rutas=[]
     if not args.sin_graficos:
@@ -524,7 +623,12 @@ def main():
         resumen_txt.append(f" Fila CSV {f['Fila_CSV']}: smp={f['smp']}; "
                            f"{f['Variable']}={f['Valor_observado']:.6g}; "
                            f"z={f['Z_con_signo']:.3f}")
+    mayor_cambio = max(tabla_cambios_corr, key=lambda f: abs(f["Cambio_r"]))
     resumen_txt += [
+        "", "CORRELACIONES DE PEARSON (10 SENSORES, smp EXCLUIDO):",
+        f"* Matriz despues: {csv_dir / 'correlacion_despues_6sigma.csv'}",
+        f"* Mayor cambio: {nombre_corto(mayor_cambio['Variable_1'])} / {nombre_corto(mayor_cambio['Variable_2'])}",
+        f"  r antes = {mayor_cambio['Pearson_antes']:.6f} | r despues = {mayor_cambio['Pearson_despues']:.6f}",
         "", "IMPORTANTE:",
         "* El criterio ±6 DS es estadistico y NO demuestra fallo fisico del sensor.",
         "* Revisa el contexto de estas 6 observaciones antes de justificar su exclusion.",
