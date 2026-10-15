@@ -1,6 +1,0 @@
-Etapa: DESPUÉS DE LA LIMPIEZA INICIAL
-Total: 30 PNG.
-Histogramas con mínimo y máximo visibles en el encabezado; rango completo sin zoom.
-La evolución representa las muestras individuales, no agregados.
-IQR/RIC: leves fuera de 1,5 y dentro de 3; extremos fuera de 3.
-No se eliminan datos. Los originales pueden contener registros desalineados.

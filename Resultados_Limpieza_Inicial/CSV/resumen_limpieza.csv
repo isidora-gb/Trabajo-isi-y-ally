@@ -1,0 +1,21 @@
+﻿Indicador,Resultado
+Archivo original,CF-2023-I-204-1230_DAT.xlsx
+Filas originales,143561
+Filas limpias,143561
+Filas eliminadas,0
+Variables reales,11
+Sensores float64,10
+Contadores int64,1
+Columnas extra en archivo,10
+Filas realineadas,352
+Celdas auditadas por realineacion,3872
+Celdas de sensores imputadas,2
+Contadores smp inferidos,1
+Fragmentos originales conservados,1944
+Saltos smp de 2 posiciones,351
+Reinicios smp 65535 a 0,2
+Celdas vacias finales,0
+Tratamiento de atipicos,NO; se analizara en otro programa
+Referencia de datos ANTES,"Tras realinear columnas, antes de imputar nulos"
+Validez fisica de extremos,No verificable sin unidades y rangos de sensores
+Eje temporal,No hay segundos: smp es contador de muestras
