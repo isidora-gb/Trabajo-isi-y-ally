@@ -1,0 +1,44 @@
+==========================================================================
+ETAPA 03 | TRATAMIENTO DE ATIPICOS POR 6 DESVIACIONES ESTANDAR
+==========================================================================
+Archivo fuente: C:\Users\isigb\OneDrive\Desktop\Trabajo-isi-y-ally\Resultados_Limpieza_Inicial\CSV\datos_limpios.csv
+Muestras originales: 143,561
+Regla de deteccion: |(x - media)/DS_muestral| >= 6, una sola pasada
+Filas detectadas: 6
+Observaciones marcadas: 6
+Filas retiradas en copia: 6
+Muestras tratadas: 143,555
+smp NO es una variable fisica y NO se usa para decidir eliminaciones.
+
+VARIABLE                 MEDIA          DS       LIMITE INF.     LIMITE SUP.   FUERA
+AcelX1_SisGenEol        0.0037306  0.00059535        0.0001585        0.0073027     0
+AcelY1_SisGenEol        0.0048668   0.0005633         0.001487        0.0082466     0
+AcelZ1_SisGenEol          0.12653  0.00051561          0.12343          0.12962     0
+GiroX_SisGenEol            3.0777     0.19132           1.9298           4.2256     0
+GiroY_SisGenEol            12.317     0.33047           10.334             14.3     0
+GiroZ_SisGenEol            6.2569      0.4189           3.7435           8.7703     6
+MagneX_SisGenEol          0.78653   0.0021025          0.77392          0.79915     0
+MagneY_SisGenEol         -0.67577   0.0020446         -0.68804          -0.6635     0
+MagneZ_SisGenEol           1.0785   0.0021375           1.0657           1.0913     0
+Ter_SisGenEol              14.528    0.082822           14.031           15.025     0
+
+FILAS DETECTADAS (corresponden a fila del CSV limpio + encabezado):
+ Fila CSV 98122: smp=54181; GiroZ_SisGenEol=23.912; z=42.146
+ Fila CSV 102748: smp=58818; GiroZ_SisGenEol=-10.598; z=-40.236
+ Fila CSV 105224: smp=61301; GiroZ_SisGenEol=23.562; z=41.311
+ Fila CSV 107699: smp=63782; GiroZ_SisGenEol=-10.038; z=-38.899
+ Fila CSV 108026: smp=64109; GiroZ_SisGenEol=23.772; z=41.812
+ Fila CSV 111087: smp=1642; GiroZ_SisGenEol=-10.458; z=-39.902
+
+IMPORTANTE:
+* El criterio ±6 DS es estadistico y NO demuestra fallo fisico del sensor.
+* Revisa el contexto de estas 6 observaciones antes de justificar su exclusion.
+* El CSV inicial sigue intacto. El eliminado solo se retira de la copia tratada.
+* Las filas retiradas crean huecos en la secuencia temporal de smp.
+* No se sustituye por promedios ni se recalculan iterativamente los limites.
+* Se guardaron 31 graficos comparativos (sin zoom).
+
+Excel: C:\Users\isigb\OneDrive\Desktop\Trabajo-isi-y-ally\Resultados_6Sigma\Excel\Resultados_6Sigma.xlsx
+CSV tratados: C:\Users\isigb\OneDrive\Desktop\Trabajo-isi-y-ally\Resultados_6Sigma\CSV\datos_tratados_6sigma.csv
+Auditoria: C:\Users\isigb\OneDrive\Desktop\Trabajo-isi-y-ally\Resultados_6Sigma\CSV\registro_atipicos_6sigma.csv
+==========================================================================

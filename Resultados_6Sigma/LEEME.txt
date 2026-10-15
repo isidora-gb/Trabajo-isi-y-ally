@@ -1,0 +1,5 @@
+PASO 03: 6 desviaciones estandar sobre datos ya limpios.
+Regla: se retira la fila completa de una COPIA cuando cualquier sensor tiene |z| >= 6; una unica pasada, sin iteracion.
+No modifica la entrada original ni reemplaza valores por promedios.
+El Excel resume resultados; el dataset completo se encuentra en CSV/datos_tratados_6sigma.csv.
+Los puntos fuera de 1.5*RIC de los boxplots son elementos DESCRIPTIVOS; no indican que se haya aplicado RIC al tratamiento.

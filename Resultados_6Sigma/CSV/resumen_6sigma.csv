@@ -1,0 +1,16 @@
+﻿Indicador,Resultado
+Archivo de entrada,datos_limpios.csv
+Criterio,"|z| >= 6, una sola pasada"
+DS utilizada,Desviacion estandar muestral (ddof=1)
+Variables evaluadas,10 sensores; smp excluido
+Filas de entrada,143561
+Filas detectadas por 6DS,6
+Valores individuales detectados,6
+Filas retiradas de la copia,6
+Filas de salida,143555
+Porcentaje retirado,0.004179408056505597
+Modalidad,Se retiraron filas de una copia
+¿Se modifico el CSV original?,NO
+¿Se imputaron los valores 6DS?,NO
+Limitacion metodologica,"6DS identifica valores extremos, no valida errores fisicos"
+Eje de evolucion,"Orden original de muestra, no segundos"
